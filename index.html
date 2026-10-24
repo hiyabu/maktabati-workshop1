@@ -201,5 +201,32 @@
   <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
 
   <script src="app.js"></script>
+  <script>
+    // Register Service Worker with fallbacks
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/maktabati-workshop1/sw.js", {
+        scope: "/maktabati-workshop1/"
+      }).then((registration) => {
+        console.log("✅ Service Worker registered with scope:", registration.scope);
+        registration.onupdatefound = () => {
+          const installingWorker = registration.installing;
+          installingWorker.onstatechange = () => {
+            if (installingWorker.state === "installed") {
+              if (navigator.serviceWorker.controller) {
+                console.log("📱 Service Worker: تم التحديث تلقائياً");
+                // Show update notification (optional)
+                // showUpdateNotification();
+              } else {
+                console.log("📦 Service Worker: تم التثبيت لأول مرة");
+              }
+            }
+          };
+        };
+      }).catch((error) => {
+        console.warn("⚠️ فشل تسجيل Service Worker:", error);
+        // الاستمرار بدون Service Worker - الموقع سيعمل normally
+      });
+    }
+  </script>
 </body>
 </html>
