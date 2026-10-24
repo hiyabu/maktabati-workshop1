@@ -1,4 +1,4 @@
-/* مكتبتي — منطق إدارة المكتبة الشخصية (localStorage فقط) */
+/* مكتبتي — منطق إدارة المكتبة الشخصية (localStorage + Supabase اختياري) */
 (function () {
   "use strict";
 
@@ -124,8 +124,10 @@
 
   function escapeHtml(s) {
     return String(s == null ? "" : s)
-      .replace(/&/g, "&").replace(/</g, "<")
-      .replace(/>/g, ">").replace(/"/g, """);
+      .replace(/&/g, "&")
+      .replace(/</g, "<")
+      .replace(/>/g, ">")
+      .replace(/"/g, "\"");
   }
 
   function starsText(n) {
@@ -307,7 +309,6 @@
       toast("تمت إضافة الكتاب بنجاح 🎉");
     }
     saveBooks();
-    closeModal();
     renderBooks();
   });
 
@@ -368,5 +369,6 @@
   });
 
   // ---------- تشغيل ----------
+  // Use localStorage only (no Supabase integration in this version)
   renderBooks();
 })();
