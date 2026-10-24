@@ -1,0 +1,373 @@
+﻿/* ظ…ظƒطھط¨طھظٹ â€” ظ…ظ†ط·ظ‚ ط¥ط¯ط§ط±ط© ط§ظ„ظ…ظƒطھط¨ط© ط§ظ„ط´ط®طµظٹط© (localStorage ظپظ‚ط·) */
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "maktabati_books_v1";
+
+  var STATUS_LABELS = {
+    todo: "ظ„ظ… ط£ط¨ط¯ط£",
+    reading: "ط£ظ‚ط±ط£ ط­ط§ظ„ظٹظ‹ط§",
+    done: "ط§ظ†طھظ‡ظٹطھ"
+  };
+
+  var SEED_BOOKS = [
+    { id: uid(), title: "ظ…ظ‚ط¯ظ…ط© ط§ط¨ظ† ط®ظ„ط¯ظˆظ†", author: "ط§ط¨ظ† ط®ظ„ط¯ظˆظ†", category: "طھط§ط±ظٹط®", status: "done", pages: 600, year: 1377, rating: 5, notes: "طھط£ط³ظٹط³ ط¹ظ„ظ… ط§ظ„ط¹ظ…ط±ط§ظ†طŒ ظ‚ط±ط§ط،ط© ظ…ظ…طھط¹ط© ظˆط¹ظ…ظٹظ‚ط©.", createdAt: Date.now() - 9 },
+    { id: uid(), title: "ط®ظˆط§ط·ط± ط´ط§ط¨", author: "ط£ط­ظ…ط¯ ط§ظ„ط´ظ‚ظٹط±ظٹ", category: "طھط·ظˆظٹط± ط§ظ„ط°ط§طھ", status: "reading", pages: 220, year: 2015, rating: 4, notes: "ط£ظ‚ط±ط£ ظپطµظ„ظ‹ط§ ظƒظ„ ظ…ط³ط§ط،طŒ ط£ظپظƒط§ط± ط¹ظ…ظ„ظٹط© ط¹ظ† ط§ظ„ط¥ط­ط³ط§ظ†.", createdAt: Date.now() - 8 },
+    { id: uid(), title: "ظپظٹ ط¸ظ„ط§ظ„ ط§ظ„ظ‚ط±ط¢ظ†", author: "ط³ظٹط¯ ظ‚ط·ط¨", category: "ط¯ظٹظ†ظٹ", status: "reading", pages: 1200, year: 1952, rating: 5, notes: "ط£طھط¯ط¨ط± ط¬ط²ط،ظ‹ط§ ظ…ظ†ظ‡ ط£ط³ط¨ظˆط¹ظٹظ‹ط§.", createdAt: Date.now() - 7 },
+    { id: uid(), title: "ظ…ظˆط³ظ… ط§ظ„ظ‡ط¬ط±ط© ط¥ظ„ظ‰ ط§ظ„ط´ظ…ط§ظ„", author: "ط§ظ„ط·ظٹط¨ طµط§ظ„ط­", category: "ط±ظˆط§ظٹط©", status: "done", pages: 168, year: 1966, rating: 5, notes: "ظ…ظ† ط£ط¹ط¸ظ… ط§ظ„ط±ظˆط§ظٹط§طھ ط§ظ„ط¹ط±ط¨ظٹط©.", createdAt: Date.now() - 6 },
+    { id: uid(), title: "ط§ظ„ط¹ط§ط¯ط§طھ ط§ظ„ط°ط±ظٹط©", author: "ط¬ظٹظ…ط³ ظƒظ„ظٹط±", category: "طھط·ظˆظٹط± ط§ظ„ط°ط§طھ", status: "todo", pages: 320, year: 2018, rating: 0, notes: "ط¹ظ„ظ‰ ظ‚ط§ط¦ظ…ط© ط§ظ„ظ‚ط±ط§ط،ط© ظ„ظ‡ط°ط§ ط§ظ„ط´ظ‡ط±.", createdAt: Date.now() - 5 },
+    { id: uid(), title: "ط£ظˆظ„ط§ط¯ ط­ط§ط±طھظ†ط§", author: "ظ†ط¬ظٹط¨ ظ…ط­ظپظˆط¸", category: "ط±ظˆط§ظٹط©", status: "todo", pages: 560, year: 1959, rating: 0, notes: "", createdAt: Date.now() - 4 },
+    { id: uid(), title: "ط§ظ„ظƒظˆظ† ط§ظ„ط£ظ†ظٹظ‚", author: "ط¨ط±ط§ظٹظ† ط؛ط±ظٹظ†", category: "ط¹ظ„ظˆظ…", status: "reading", pages: 450, year: 1999, rating: 4, notes: "ظپظٹط²ظٹط§ط، ظ…ط¨ط³ط·ط© ط¨ط£ط³ظ„ظˆط¨ ط´ظٹظ‚.", createdAt: Date.now() - 3 },
+    { id: uid(), title: "ط·ط¨ط§ط¦ط¹ ط§ظ„ط§ط³طھط¨ط¯ط§ط¯", author: "ط¹ط¨ط¯ ط§ظ„ط±ط­ظ…ظ† ط§ظ„ظƒظˆط§ظƒط¨ظٹ", category: "ظپظƒط±", status: "done", pages: 190, year: 1902, rating: 4, notes: "ظ†طµ ظ…ط¤ط³ط³ ظپظٹ ط§ظ„ظپظƒط± ط§ظ„ط³ظٹط§ط³ظٹ ط§ظ„ط¹ط±ط¨ظٹ.", createdAt: Date.now() - 2 }
+  ];
+
+  // ---------- ط§ظ„ط­ط§ظ„ط© ----------
+  var books = loadBooks();
+  var deleteTargetId = null;
+  var currentRating = 0;
+
+  // ---------- ط¹ظ†ط§طµط± DOM ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var grid = $("booksGrid");
+  var emptyState = $("emptyState");
+  var resultCount = $("resultCount");
+  var searchInput = $("searchInput");
+  var categoryFilter = $("categoryFilter");
+  var statusFilter = $("statusFilter");
+  var sortSelect = $("sortSelect");
+  var bookModal = $("bookModal");
+  var deleteModal = $("deleteModal");
+  var bookForm = $("bookForm");
+  var formError = $("formError");
+
+  // ---------- ط§ظ„طھط®ط²ظٹظ† ----------
+  function uid() {
+    return "b" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+  function loadBooks() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) { /* طھط¬ط§ظ‡ظ„ */ }
+    // ط£ظˆظ„ طھط´ط؛ظٹظ„: ط§ظ„ط¨ظٹط§ظ†ط§طھ ط§ظ„طھط¬ط±ظٹط¨ظٹط©
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_BOOKS)); } catch (e) {}
+    return SEED_BOOKS.slice();
+  }
+  function saveBooks() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(books)); } catch (e) {
+      toast("طھط¹ط°ظ‘ط± ط§ظ„ط­ظپط¸: ظ…ط³ط§ط­ط© ط§ظ„طھط®ط²ظٹظ† ظ…ظ…طھظ„ط¦ط©");
+    }
+  }
+
+  // ---------- ط§ظ„ط¥ط­طµط§ط¦ظٹط§طھ ----------
+  function renderStats() {
+    var reading = books.filter(function (b) { return b.status === "reading"; }).length;
+    var done = books.filter(function (b) { return b.status === "done"; }).length;
+    var todo = books.filter(function (b) { return b.status === "todo"; }).length;
+    $("statTotal").textContent = books.length;
+    $("statReading").textContent = reading;
+    $("statDone").textContent = done;
+    $("statTodo").textContent = todo;
+  }
+
+  // ---------- ط§ظ„طھطµظ†ظٹظپط§طھ ----------
+  function allCategories() {
+    var set = {};
+    books.forEach(function (b) { if (b.category) set[b.category.trim()] = true; });
+    return Object.keys(set).sort();
+  }
+  function renderCategoryOptions() {
+    var current = categoryFilter.value || "all";
+    categoryFilter.innerHTML = '<option value="all">ظƒظ„ ط§ظ„طھطµظ†ظٹظپط§طھ</option>';
+    allCategories().forEach(function (c) {
+      var opt = document.createElement("option");
+      opt.value = c; opt.textContent = c;
+      categoryFilter.appendChild(opt);
+    });
+    // ط­ط§ظپط¸ ط¹ظ„ظ‰ ط§ظ„ط§ط®طھظٹط§ط± ط¥ظ† ظƒط§ظ† ظ…ظˆط¬ظˆط¯ظ‹ط§
+    var exists = Array.prototype.some.call(categoryFilter.options, function (o) { return o.value === current; });
+    categoryFilter.value = exists ? current : "all";
+
+    var dl = $("categoryList");
+    dl.innerHTML = "";
+    allCategories().forEach(function (c) {
+      var o = document.createElement("option");
+      o.value = c;
+      dl.appendChild(o);
+    });
+  }
+
+  // ---------- ط§ظ„طھطµظپظٹط© ظˆط§ظ„ط¹ط±ط¶ ----------
+  function getFiltered() {
+    var q = searchInput.value.trim();
+    var cat = categoryFilter.value;
+    var st = statusFilter.value;
+    var out = books.filter(function (b) {
+      var matchQ = !q ||
+        (b.title && b.title.indexOf(q) !== -1) ||
+        (b.author && b.author.indexOf(q) !== -1);
+      var matchC = cat === "all" || b.category === cat;
+      var matchS = st === "all" || b.status === st;
+      return matchQ && matchC && matchS;
+    });
+    var sort = sortSelect.value;
+    out.sort(function (a, b) {
+      if (sort === "title") return (a.title || "").localeCompare(b.title || "", "ar");
+      if (sort === "author") return (a.author || "").localeCompare(b.author || "", "ar");
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+    return out;
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function starsText(n) {
+    n = Number(n) || 0;
+    if (!n) return '<span style="color:#9aa5a0;font-size:.8rem">ط¨ظ„ط§ طھظ‚ظٹظٹظ…</span>';
+    var s = "";
+    for (var i = 1; i <= 5; i++) s += i <= n ? "âک…" : "âک†";
+    return '<span class="book-rating" title="ط§ظ„طھظ‚ظٹظٹظ…: ' + n + ' / 5">' + s + "</span>";
+  }
+
+  function renderBooks() {
+    renderStats();
+    renderCategoryOptions();
+    var list = getFiltered();
+
+    if (!list.length) {
+      grid.innerHTML = "";
+      emptyState.classList.remove("hidden");
+    } else {
+      emptyState.classList.add("hidden");
+      grid.innerHTML = list.map(cardHtml).join("");
+    }
+
+    var total = books.length;
+    resultCount.textContent = list.length === total
+      ? "ط¹ط±ط¶ " + total + " ظ…ظ† ط§ظ„ظƒطھط¨"
+      : "ط¹ط±ط¶ " + list.length + " ظ…ظ† ط£طµظ„ " + total + " ظƒطھط§ط¨";
+  }
+
+  function cardHtml(b) {
+    var statusClass = b.status === "reading" ? "badge-reading" : b.status === "done" ? "badge-done" : "badge-todo";
+    var letter = (b.title || "طں").trim().charAt(0) || "طں";
+    var meta = [];
+    if (b.pages) meta.push("ًں“„ " + escapeHtml(b.pages) + " طµظپط­ط©");
+    if (b.year) meta.push("ًں“… " + escapeHtml(b.year));
+    var notes = b.notes ? '<div class="book-notes">' + escapeHtml(b.notes) + "</div>" : "";
+
+    return (
+      '<article class="book-card" data-id="' + escapeHtml(b.id) + '">' +
+        '<div class="book-cover"><span class="cover-letter">' + escapeHtml(letter) + "</span></div>" +
+        '<div class="book-body">' +
+          "<h3 class='book-title'>" + escapeHtml(b.title) + "</h3>" +
+          "<p class='book-author'>âœچï¸ڈ " + escapeHtml(b.author) + "</p>" +
+          '<div class="badges">' +
+            '<span class="badge badge-cat">' + escapeHtml(b.category) + "</span>" +
+            '<span class="badge ' + statusClass + '">' + STATUS_LABELS[b.status] + "</span>" +
+          "</div>" +
+          (meta.length ? '<div class="book-meta"><span>' + meta.join("</span><span>") + "</span></div>" : "") +
+          starsText(b.rating) +
+          notes +
+        "</div>" +
+        '<div class="status-quick" title="طھط؛ظٹظٹط± ط³ط±ظٹط¹ ظ„ظ„ط­ط§ظ„ط©">' +
+          quickBtn(b, "todo", "ظ„ظ… ط£ط¨ط¯ط£") + quickBtn(b, "reading", "ط£ظ‚ط±ط£") + quickBtn(b, "done", "ط§ظ†طھظ‡ظٹطھ") +
+        "</div>" +
+        '<div class="book-actions">' +
+          '<button class="btn btn-small btn-edit" data-action="edit">âœڈï¸ڈ طھط¹ط¯ظٹظ„</button>' +
+          '<button class="btn btn-small btn-del" data-action="delete">ًں—‘ï¸ڈ ط­ط°ظپ</button>' +
+        "</div>" +
+      "</article>"
+    );
+  }
+
+  function quickBtn(b, value, label) {
+    var active = b.status === value ? "active-" + value : "";
+    return '<button data-action="status" data-value="' + value + '" class="' + active + '">' + label + "</button>";
+  }
+
+  // ---------- ط§ظ„ظ†ظˆط§ظپط° ----------
+  function openModal(editBook) {
+    formError.classList.add("hidden");
+    bookForm.reset();
+    if (editBook) {
+      $("modalTitle").textContent = "طھط¹ط¯ظٹظ„ ط§ظ„ظƒطھط§ط¨";
+      $("bookId").value = editBook.id;
+      $("titleInput").value = editBook.title || "";
+      $("authorInput").value = editBook.author || "";
+      $("categoryInput").value = editBook.category || "";
+      $("statusInput").value = editBook.status || "todo";
+      $("pagesInput").value = editBook.pages || "";
+      $("yearInput").value = editBook.year || "";
+      $("notesInput").value = editBook.notes || "";
+      setRating(Number(editBook.rating) || 0);
+      $("saveBtn").textContent = "ًں’¾ ط­ظپط¸ ط§ظ„طھط¹ط¯ظٹظ„ط§طھ";
+    } else {
+      $("modalTitle").textContent = "ط¥ط¶ط§ظپط© ظƒطھط§ط¨ ط¬ط¯ظٹط¯";
+      $("bookId").value = "";
+      $("statusInput").value = "todo";
+      setRating(0);
+      $("saveBtn").textContent = "ًں’¾ ط­ظپط¸ ط§ظ„ظƒطھط§ط¨";
+    }
+    bookModal.classList.remove("hidden");
+    setTimeout(function () { $("titleInput").focus(); }, 50);
+  }
+  function closeModal() { bookModal.classList.add("hidden"); }
+  function openDelete(id) {
+    var b = books.find(function (x) { return x.id === id; });
+    deleteTargetId = id;
+    $("delText").textContent = b
+      ? 'ظ‡ظ„ ط£ظ†طھ ظ…طھط£ظƒط¯ ظ…ظ† ط­ط°ظپ "' + b.title + '"طں ظ„ط§ ظٹظ…ظƒظ† ط§ظ„طھط±ط§ط¬ط¹ ط¹ظ† ظ‡ط°ط§ ط§ظ„ط¥ط¬ط±ط§ط،.'
+      : "ظ‡ظ„ ط£ظ†طھ ظ…طھط£ظƒط¯ ظ…ظ† ط­ط°ظپ ظ‡ط°ط§ ط§ظ„ظƒطھط§ط¨طں";
+    deleteModal.classList.remove("hidden");
+  }
+  function closeDelete() { deleteModal.classList.add("hidden"); deleteTargetId = null; }
+
+  function setRating(n) {
+    currentRating = n;
+    var btns = $("starsInput").querySelectorAll("button");
+    btns.forEach(function (btn) {
+      btn.classList.toggle("lit", Number(btn.dataset.v) <= n);
+    });
+  }
+
+  // ---------- ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ ----------
+  function toast(msg) {
+    var wrap = $("toastWrap");
+    var el = document.createElement("div");
+    el.className = "toast";
+    el.textContent = "âœ“ " + msg;
+    wrap.appendChild(el);
+    setTimeout(function () {
+      el.style.opacity = "0";
+      el.style.transition = "opacity .3s";
+      setTimeout(function () { el.remove(); }, 300);
+    }, 2200);
+  }
+
+  // ---------- ط§ظ„ط£ط­ط¯ط§ط« ----------
+  $("addBtn").addEventListener("click", function () { openModal(null); });
+  $("emptyAddBtn").addEventListener("click", function () { openModal(null); });
+  $("closeModalBtn").addEventListener("click", closeModal);
+  $("cancelBtn").addEventListener("click", closeModal);
+  bookModal.addEventListener("click", function (e) { if (e.target === bookModal) closeModal(); });
+  deleteModal.addEventListener("click", function (e) { if (e.target === deleteModal) closeDelete(); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { closeModal(); closeDelete(); }
+  });
+
+  $("starsInput").addEventListener("click", function (e) {
+    var btn = e.target.closest("button");
+    if (!btn) return;
+    var v = Number(btn.dataset.v);
+    setRating(v === currentRating ? 0 : v); // ظ†ظ‚ط±ط© ط«ط§ظ†ظٹط© طھظ„ط؛ظٹ ط§ظ„طھظ‚ظٹظٹظ…
+  });
+
+  bookForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var title = $("titleInput").value.trim();
+    var author = $("authorInput").value.trim();
+    var category = $("categoryInput").value.trim();
+    var status = $("statusInput").value;
+    var pages = parseInt($("pagesInput").value, 10);
+    var year = parseInt($("yearInput").value, 10);
+    var notes = $("notesInput").value.trim();
+    var id = $("bookId").value;
+
+    if (!title || !author || !category) {
+      formError.classList.remove("hidden");
+      return;
+    }
+    formError.classList.add("hidden");
+
+    if (id) {
+      var b = books.find(function (x) { return x.id === id; });
+      if (b) {
+        b.title = title; b.author = author; b.category = category;
+        b.status = status;
+        b.pages = isNaN(pages) ? "" : pages;
+        b.year = isNaN(year) ? "" : year;
+        b.rating = currentRating; b.notes = notes;
+        toast("طھظ… ط­ظپط¸ ط§ظ„طھط¹ط¯ظٹظ„ط§طھ ط¨ظ†ط¬ط§ط­");
+      }
+    } else {
+      books.unshift({
+        id: uid(), title: title, author: author, category: category,
+        status: status, pages: isNaN(pages) ? "" : pages,
+        year: isNaN(year) ? "" : year, rating: currentRating,
+        notes: notes, createdAt: Date.now()
+      });
+      toast("طھظ…طھ ط¥ط¶ط§ظپط© ط§ظ„ظƒطھط§ط¨ ط¨ظ†ط¬ط§ط­ ًںژ‰");
+    }
+    saveBooks();
+    closeModal();
+    renderBooks();
+  });
+
+  grid.addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    var card = e.target.closest(".book-card");
+    if (!card) return;
+    var id = card.getAttribute("data-id");
+    var action = btn.getAttribute("data-action");
+
+    if (action === "edit") {
+      var b = books.find(function (x) { return x.id === id; });
+      if (b) openModal(b);
+    } else if (action === "delete") {
+      openDelete(id);
+    } else if (action === "status") {
+      var nb = books.find(function (x) { return x.id === id; });
+      if (nb) {
+        nb.status = btn.getAttribute("data-value");
+        saveBooks();
+        renderBooks();
+        toast("طھظ… طھط­ط¯ظٹط« ط­ط§ظ„ط© آ«" + nb.title + "آ» ط¥ظ„ظ‰: " + STATUS_LABELS[nb.status]);
+      }
+    }
+  });
+
+  $("delCancelBtn").addEventListener("click", closeDelete);
+  $("delConfirmBtn").addEventListener("click", function () {
+    if (!deleteTargetId) return;
+    var b = books.find(function (x) { return x.id === deleteTargetId; });
+    books = books.filter(function (x) { return x.id !== deleteTargetId; });
+    saveBooks();
+    closeDelete();
+    renderBooks();
+    toast(b ? "طھظ… ط­ط°ظپ آ«" + b.title + "آ»" : "طھظ… ط­ط°ظپ ط§ظ„ظƒطھط§ط¨");
+  });
+
+  $("resetBtn").addEventListener("click", function () {
+    if (!confirm("ط³ظٹطھظ… ط§ط³طھط¨ط¯ط§ظ„ ظ…ظƒطھط¨طھظƒ ط§ظ„ط­ط§ظ„ظٹط© ط¨ط§ظ„ط¨ظٹط§ظ†ط§طھ ط§ظ„طھط¬ط±ظٹط¨ظٹط©. ظ…طھط§ط¨ط¹ط©طں")) return;
+    books = SEED_BOOKS.map(function (b) {
+      var c = Object.assign({}, b);
+      c.id = uid();
+      c.createdAt = Date.now();
+      return c;
+    });
+    searchInput.value = "";
+    categoryFilter.value = "all";
+    statusFilter.value = "all";
+    saveBooks();
+    renderBooks();
+    toast("طھظ…طھ ط§ط³طھط¹ط§ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ ط§ظ„طھط¬ط±ظٹط¨ظٹط©");
+  });
+
+  [searchInput, categoryFilter, statusFilter, sortSelect].forEach(function (el) {
+    el.addEventListener("input", renderBooks);
+    el.addEventListener("change", renderBooks);
+  });
+
+  // ---------- طھط´ط؛ظٹظ„ ----------
+  renderBooks();
+})();
+
