@@ -16,7 +16,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="supabase-anon-key" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbmpnYWZhdXp5YXNkc29kY2Z1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI4NTMzODYsImV4cCI6MjEwODQyOTM4Nn0.1Vl5Xrt1UaPcR6tgt2AopIggnQ7ICl6_CarCEaepgws">
+  <meta name="supabase-anon-key" content="sb_publishable_ROVBt99i2C1fDAauZaW5ow_vBQFoYzk">
   <meta name="apple-mobile-web-app-title" content="مكتبتي" />
 </head>
 <body>
@@ -32,9 +32,11 @@
         </div>
       </div>
       <div class="header-actions">
-        <a class="btn btn-ghost" href="about.html" style="text-decoration:none">ℹ عن مكتبتي</a>
+        <a class="btn btn-ghost" href="about.html" style="text-decoration:none">ℹ️ عن مكتبتي</a>
         <button class="btn btn-ghost" id="resetBtn" title="استعادة البيانات التجريبية">↺ استعادة التجريبي</button>
         <button class="btn btn-primary" id="addBtn">＋ إضافة كتاب</button>
+        <button class="btn btn-danger" id="loginBtn">🔐 دخول</button>
+        <button class="btn btn-ghost" id="logoutBtn" style="display:none;">🚪 خروج</button>
       </div>
     </div>
   </header>
@@ -197,15 +199,47 @@
     </div>
   </div>
 
+  <!-- ===== شاشة تسجيل الدخول ===== -->
+  <div class="overlay hidden" id="loginScreen">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+      <div class="modal-head">
+        <h2 id="loginTitle">🔐 دخول إلى مكتبتي</h2>
+      </div>
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="emailInput">البريد الإلكتروني</label>
+          <input type="email" id="emailInput" placeholder="example@mail.com" required autocomplete="email" />
+        </div>
+        <div class="field">
+          <label for="passwordInput">كلمة المرور</label>
+          <input type="password" id="passwordInput" placeholder="••••••••" required autocomplete="current-password" />
+        </div>
+        <p class="form-error hidden" id="loginError">يرجى إدخال البريد الإلكتروني وكلمة المرور.</p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="loginCancelBtn">إلغاء</button>
+          <button type="submit" class="btn btn-primary" id="loginSubmitBtn">دخول</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ===== رسائل النجاح ===== -->
   <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
+
+  <!-- Supabase JS v2 Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
   <script src="app.js"></script>
   <script>
     // Register Service Worker with fallbacks
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/maktabati-workshop1/sw.js", {
-        scope: "/maktabati-workshop1/"
+      // Determine base path: GitHub Pages uses /maktabati-workshop1/, local uses /
+      var isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      var swScope = isLocalhost ? "/" : "/maktabati-workshop1/";
+      var swPath = isLocalhost ? "/sw.js" : "/maktabati-workshop1/sw.js";
+
+      navigator.serviceWorker.register(swPath, {
+        scope: swScope
       }).then((registration) => {
         console.log("✅ Service Worker registered with scope:", registration.scope);
         registration.onupdatefound = () => {
@@ -214,8 +248,6 @@
             if (installingWorker.state === "installed") {
               if (navigator.serviceWorker.controller) {
                 console.log("📱 Service Worker: تم التحديث تلقائياً");
-                // Show update notification (optional)
-                // showUpdateNotification();
               } else {
                 console.log("📦 Service Worker: تم التثبيت لأول مرة");
               }
@@ -224,7 +256,6 @@
         };
       }).catch((error) => {
         console.warn("⚠️ فشل تسجيل Service Worker:", error);
-        // الاستمرار بدون Service Worker - الموقع سيعمل normally
       });
     }
   </script>

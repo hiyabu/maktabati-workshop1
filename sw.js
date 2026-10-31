@@ -2,7 +2,7 @@
 // Strategie: Cache-first للأصول، Network-first للبيانات الديناميكية
 // يحافظ على localStorage ويعمل خارج الاتصال
 
-const CACHE_NAME = "maktabati-v2";
+const CACHE_NAME = "maktabati-v3";
 const CORE_ASSETS = [
   "/maktabati-workshop1/",
   "/maktabati-workshop1/index.html",
@@ -44,7 +44,7 @@ self.addEventListener("activate", (event) => {
   );
   // Claim التحكم الفوري في النوافذ المفتوحة
   self.clients.claim();
-);
+});
 
 // استراتيجية الاسترداد: Cache-first للأصول، Network-first للبيانات
 self.addEventListener("fetch", (event) => {

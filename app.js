@@ -10,6 +10,15 @@
     done: "انتهيت"
   };
 
+  var SUPABASE_URL = "https://wqnjgafauzyasdsodcfu.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_ROVBt99i2C1fDAauZaW5ow_vBQFoYzk";
+  var isSupabaseActive = false;
+  var userId = null;
+  var currentUser = null;
+  var supabase = null;
+  var supabaseMode = false;
+
+  // ---------- SEED books ----------
   var SEED_BOOKS = [
     { id: uid(), title: "مقدمة ابن خلدون", author: "ابن خلدون", category: "تاريخ", status: "done", pages: 600, year: 1377, rating: 5, notes: "تأسيس علم العمران، قراءة ممتعة وعميقة.", createdAt: Date.now() - 9 },
     { id: uid(), title: "خواطر شاب", author: "أحمد الشقيري", category: "تطوير الذات", status: "reading", pages: 220, year: 2015, rating: 4, notes: "أقرأ فصلًا كل مساء، أفكار عملية عن الإحسان.", createdAt: Date.now() - 8 },
@@ -25,6 +34,7 @@
   var books = loadBooks();
   var deleteTargetId = null;
   var currentRating = 0;
+  var supabaseMode = false;
 
   // ---------- عناصر DOM ----------
   var $ = function (id) { return document.getElementById(id); };
@@ -39,6 +49,10 @@
   var deleteModal = $("deleteModal");
   var bookForm = $("bookForm");
   var formError = $("formError");
+  var loginScreen = $("loginScreen");
+  var loginForm = $("loginForm");
+  var loginError = $("loginError");
+  var logoutBtn = $("logoutBtn");
 
   // ---------- التخزين ----------
   function uid() {
@@ -84,20 +98,23 @@
     categoryFilter.innerHTML = '<option value="all">كل التصنيفات</option>';
     allCategories().forEach(function (c) {
       var opt = document.createElement("option");
-      opt.value = c; opt.textContent = c;
+      opt.value = c;
+      opt.textContent = c;
       categoryFilter.appendChild(opt);
     });
-    // حافظ على الاختيار إن كان موجودًا
     var exists = Array.prototype.some.call(categoryFilter.options, function (o) { return o.value === current; });
     categoryFilter.value = exists ? current : "all";
 
     var dl = $("categoryList");
-    dl.innerHTML = "";
-    allCategories().forEach(function (c) {
-      var o = document.createElement("option");
-      o.value = c;
-      dl.appendChild(o);
-    });
+    if (dl) {
+      dl.innerHTML = "";
+      allCategories().forEach(function (c) {
+        var o = document.createElement("option");
+        o.value = c;
+        o.textContent = c;
+        dl.appendChild(o);
+      });
+    }
   }
 
   // ---------- التصفية والعرض ----------
@@ -197,7 +214,8 @@
 
   // ---------- النوافذ ----------
   function openModal(editBook) {
-    formError.classList.add("hidden");
+    if (!bookModal) return;
+    if (formError) formError.classList.add("hidden");
     bookForm.reset();
     if (editBook) {
       $("modalTitle").textContent = "تعديل الكتاب";
@@ -221,7 +239,7 @@
     bookModal.classList.remove("hidden");
     setTimeout(function () { $("titleInput").focus(); }, 50);
   }
-  function closeModal() { bookModal.classList.add("hidden"); }
+  function closeModal() { if (bookModal) bookModal.classList.add("hidden"); }
   function openDelete(id) {
     var b = books.find(function (x) { return x.id === id; });
     deleteTargetId = id;
@@ -230,7 +248,7 @@
       : "هل أنت متأكد من حذف هذا الكتاب؟";
     deleteModal.classList.remove("hidden");
   }
-  function closeDelete() { deleteModal.classList.add("hidden"); deleteTargetId = null; }
+  function closeDelete() { if (deleteModal) deleteModal.classList.add("hidden"); deleteTargetId = null; }
 
   function setRating(n) {
     currentRating = n;
@@ -242,16 +260,241 @@
 
   // ---------- التنبيهات ----------
   function toast(msg) {
-    var wrap = $("toastWrap");
+    if (!toastWrap) return;
     var el = document.createElement("div");
     el.className = "toast";
     el.textContent = "✓ " + msg;
-    wrap.appendChild(el);
+    toastWrap.appendChild(el);
     setTimeout(function () {
       el.style.opacity = "0";
       el.style.transition = "opacity .3s";
       setTimeout(function () { el.remove(); }, 300);
     }, 2200);
+  }
+
+  // ---------- حالة الدخول / Supabase ----------
+  function showLoginScreen() { if (loginScreen) loginScreen.classList.remove("hidden"); }
+  function hideLoginScreen() { if (loginScreen) loginScreen.classList.add("hidden"); }
+  function setAuthUI() {
+    var loggedIn = !!(currentUser && isSupabaseActive);
+    if (logoutBtn) logoutBtn.style.display = loggedIn ? "inline-block" : "none";
+    var loginBtn = document.querySelector("#loginBtn");
+    if (loginBtn) loginBtn.style.display = loggedIn ? "none" : "inline-block";
+  }
+
+  // ---------- تهيئة Supabase ----------
+  function initSupabase() {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      console.log("ℹ️ Supabase URL not configured - using localStorage only");
+      isSupabaseActive = false;
+      return;
+    }
+    try {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log("🔗 Supabase initialized with anon key");
+
+      supabase.auth.getUser().then(function (res) {
+        if (res.error) {
+          console.error("❌ خطأ في التحقق من الجلسة:", res.error);
+          isSupabaseActive = false;
+          return;
+        }
+        if (res.data && res.data.user) {
+          currentUser = res.data.user;
+          userId = currentUser.id;
+          isSupabaseActive = true;
+          setAuthUI();
+          fetchUserBooks();
+        } else {
+          isSupabaseActive = false;
+        }
+      }).catch(function (err) {
+        console.error("❌ خطأ في تهيئة Supabase:", err);
+        isSupabaseActive = false;
+      });
+    } catch (err) {
+      console.error("❌ خطأ في تهيئة Supabase:", err);
+      isSupabaseActive = false;
+    }
+  }
+
+  // جلب كتب المستخدم من Supabase
+  function fetchUserBooks() {
+    if (!currentUser || !supabase) return;
+
+    supabase.from("books").select("*").eq("user_id", userId).order("created_at", { ascending: false }).then(function (res) {
+      var data = res.data;
+      var error = res.error;
+      if (error) {
+        console.error("❌ خطأ في جلب الكتب:", error);
+        isSupabaseActive = false;
+        books = loadBooks();
+        renderBooks();
+        return;
+      }
+      var userBooks = data || [];
+      isSupabaseActive = true;
+      books = userBooks.map(function (b) {
+        var c = Object.assign({}, b);
+        c._from = "supabase";
+        return c;
+      });
+      renderBooks();
+    }).catch(function (err) {
+      console.error("❌ خطأ في جلب الكتب:", err);
+      isSupabaseActive = false;
+      books = loadBooks();
+      renderBooks();
+    });
+  }
+
+  // إعداد مستمعي الأحداث لدخول auth
+  function setupAuthListeners() {
+    // يمكن إضافة مستمعي أحداث هنا لمراقبة تغييرات حالة الدخول
+  }
+
+  // تسجيل الدخول
+  window.loginWithSupabase = function (email, password) {
+    if (!supabase) {
+      alert("❌ خدمة الدخول غير متوفرة");
+      return;
+    }
+    var loginBtn = document.querySelector("#loginBtn");
+    if (loginBtn) { loginBtn.textContent = "جاري الدخول..."; loginBtn.disabled = true; }
+    supabase.auth.signInWithPassword({ email: email, password: password }).then(function (res) {
+      if (loginBtn) { loginBtn.textContent = "🔐 دخول"; loginBtn.disabled = false; }
+      var error = res.error;
+      if (error) {
+        if (loginError) { loginError.textContent = "❌ خطأ في الدخول: " + (error.message || "حاول مرة أخرى"); loginError.classList.remove("hidden"); }
+        return;
+      }
+      currentUser = res.data.user;
+      userId = currentUser.id;
+      isSupabaseActive = true;
+      hideLoginScreen();
+      setAuthUI();
+      fetchUserBooks();
+      toast("✓ تم الدخول بنجاح");
+    }).catch(function (err) {
+      if (loginBtn) { loginBtn.textContent = "🔐 دخول"; loginBtn.disabled = false; }
+      if (loginError) { loginError.textContent = "❌ خطأ في الدخول: " + (err && err.message ? err.message : "حاول مرة أخرى"); loginError.classList.remove("hidden"); }
+    });
+  };
+
+  // تسجيل الخروج
+  window.logoutFromSupabase = function () {
+    if (!supabase) { hideLoginScreen(); return; }
+    supabase.auth.signOut().then(function () {
+      currentUser = null;
+      userId = null;
+      isSupabaseActive = false;
+      hideLoginScreen();
+      setAuthUI();
+      books = loadBooks();
+      renderBooks();
+      toast("✓ تم الخروج");
+    }).catch(function (err) {
+      alert("❌ خطأ في الخروج: " + (err && err.message ? err.message : ""));
+    });
+  };
+
+  // إضافة كتاب إلى Supabase أو localStorage
+  function addBookToStorage(bookData) {
+    if (isSupabaseActive && currentUser && supabase) {
+      supabase.from("books").insert({
+        title: bookData.title,
+        author: bookData.author,
+        category: bookData.category,
+        status: bookData.status,
+        pages: bookData.pages,
+        year: bookData.year,
+        rating: bookData.rating,
+        notes: bookData.notes,
+        user_id: userId
+      }).then(function (res) {
+        if (res.error) {
+          alert("❌ خطأ في الحفظ: " + (res.error.message || ""));
+          saveBookLocally(bookData);
+        } else {
+          toast("✓ تمت الإضافة إلى مكتبتك السحابية");
+          fetchUserBooks();
+        }
+      }).catch(function (err) {
+        alert("❌ خطأ في الحفظ: " + (err && err.message ? err.message : ""));
+        saveBookLocally(bookData);
+      });
+    } else {
+      saveBookLocally(bookData);
+    }
+  }
+
+  // حفظ كتاب إلى localStorage
+  function saveBookLocally(bookData) {
+    books.unshift({
+      id: uid(), title: bookData.title, author: bookData.author, category: bookData.category,
+      status: bookData.status, pages: bookData.pages,
+      year: bookData.year, rating: bookData.rating,
+      notes: bookData.notes, createdAt: Date.now(),
+      _from: "localStorage"
+    });
+    saveBooks();
+    renderBooks();
+    toast("✓ تم الحفظ محلياً في المتصفح");
+  }
+
+  // تعديل كتاب
+  function updateBookInStorage(id, updatedData) {
+    var b = books.find(function (x) { return x.id === id; });
+    if (!b) return;
+
+    Object.assign(b, updatedData);
+
+    if (isSupabaseActive && currentUser && supabase) {
+      supabase.from("books").update({
+        title: updatedData.title,
+        author: updatedData.author,
+        category: updatedData.category,
+        status: updatedData.status,
+        pages: updatedData.pages,
+        year: updatedData.year,
+        rating: updatedData.rating,
+        notes: updatedData.notes
+      }).eq("id", id).eq("user_id", userId).then(function (res) {
+        if (res.error) {
+          alert("❌ خطأ في التعديل: " + (res.error.message || ""));
+          saveBooks();
+        } else {
+          toast("✓ تم تحديث الكتاب بنجاح");
+          fetchUserBooks();
+        }
+      }).catch(function (err) {
+        alert("❌ خطأ في التعديل: " + (err && err.message ? err.message : ""));
+        saveBooks();
+      });
+    } else {
+      saveBooks();
+      toast("✓ تم تحديث الكتاب محلياً");
+    }
+  }
+
+  // حذف كتاب
+  function deleteBookFromStorage(id) {
+    if (isSupabaseActive && currentUser && supabase) {
+      supabase.from("books").delete().eq("id", id).eq("user_id", userId).then(function (res) {
+        if (res.error) {
+          alert("❌ خطأ في الحذف: " + (res.error.message || ""));
+        } else {
+          toast("✓ تم حذف الكتاب من حسابك");
+          fetchUserBooks();
+        }
+      }).catch(function (err) {
+        alert("❌ خطأ في الحذف: " + (err && err.message ? err.message : ""));
+      });
+    } else {
+      books = books.filter(function (x) { return x.id !== id; });
+      saveBooks();
+      toast("✓ تم الحذف محلياً");
+    }
   }
 
   // ---------- الأحداث ----------
@@ -269,7 +512,32 @@
     var btn = e.target.closest("button");
     if (!btn) return;
     var v = Number(btn.dataset.v);
-    setRating(v === currentRating ? 0 : v); // نقرة ثانية تلغي التقييم
+    setRating(v === currentRating ? 0 : v);
+  });
+
+  $("loginBtn").addEventListener("click", function (e) {
+    e.preventDefault();
+    showLoginScreen();
+  });
+  $("logoutBtn").addEventListener("click", function (e) {
+    e.preventDefault();
+    window.logoutFromSupabase();
+  });
+  if (loginForm) {
+    loginForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var email = $("emailInput") ? $("emailInput").value.trim() : "";
+      var password = $("passwordInput") ? $("passwordInput").value : "";
+      if (!email || !password) {
+        if (loginError) { loginError.textContent = "❌ يرجى إدخال البريد الإلكتروني وكلمة المرور."; loginError.classList.remove("hidden"); }
+        return;
+      }
+      window.loginWithSupabase(email, password);
+    });
+  }
+  $("loginCancelBtn").addEventListener("click", function (e) {
+    e.preventDefault();
+    hideLoginScreen();
   });
 
   bookForm.addEventListener("submit", function (e) {
@@ -284,32 +552,24 @@
     var id = $("bookId").value;
 
     if (!title || !author || !category) {
-      formError.classList.remove("hidden");
+      if (formError) formError.classList.remove("hidden");
       return;
     }
-    formError.classList.add("hidden");
+    if (formError) formError.classList.add("hidden");
+
+    var bookData = {
+      title: title, author: author, category: category,
+      status: status, pages: isNaN(pages) ? "" : pages,
+      year: isNaN(year) ? "" : year, rating: currentRating,
+      notes: notes
+    };
 
     if (id) {
-      var b = books.find(function (x) { return x.id === id; });
-      if (b) {
-        b.title = title; b.author = author; b.category = category;
-        b.status = status;
-        b.pages = isNaN(pages) ? "" : pages;
-        b.year = isNaN(year) ? "" : year;
-        b.rating = currentRating; b.notes = notes;
-        toast("تم حفظ التعديلات بنجاح");
-      }
+      updateBookInStorage(id, bookData);
     } else {
-      books.unshift({
-        id: uid(), title: title, author: author, category: category,
-        status: status, pages: isNaN(pages) ? "" : pages,
-        year: isNaN(year) ? "" : year, rating: currentRating,
-        notes: notes, createdAt: Date.now()
-      });
-      toast("تمت إضافة الكتاب بنجاح 🎉");
+      addBookToStorage(bookData);
     }
-    saveBooks();
-    renderBooks();
+    closeModal();
   });
 
   grid.addEventListener("click", function (e) {
@@ -324,11 +584,16 @@
       var b = books.find(function (x) { return x.id === id; });
       if (b) openModal(b);
     } else if (action === "delete") {
-      openDelete(id);
+      deleteBookFromStorage(id);
     } else if (action === "status") {
       var nb = books.find(function (x) { return x.id === id; });
       if (nb) {
         nb.status = btn.getAttribute("data-value");
+        if (isSupabaseActive && currentUser && supabase) {
+          supabase.from("books").update({ status: nb.status }).eq("id", id).eq("user_id", userId).then(function (res) {
+            if (res.error) toast("❌ تعذّر تحديث الحالة: " + (res.error.message || ""));
+          }).catch(function (err) { toast("❌ تعذّر تحديث الحالة: " + (err && err.message ? err.message : "")); });
+        }
         saveBooks();
         renderBooks();
         toast("تم تحديث حالة «" + nb.title + "» إلى: " + STATUS_LABELS[nb.status]);
@@ -340,11 +605,16 @@
   $("delConfirmBtn").addEventListener("click", function () {
     if (!deleteTargetId) return;
     var b = books.find(function (x) { return x.id === deleteTargetId; });
-    books = books.filter(function (x) { return x.id !== deleteTargetId; });
-    saveBooks();
-    closeDelete();
-    renderBooks();
-    toast(b ? "تم حذف «" + b.title + "»" : "تم حذف الكتاب");
+    if (isSupabaseActive && currentUser && supabase) {
+      deleteBookFromStorage(deleteTargetId);
+      closeDelete();
+    } else {
+      books = books.filter(function (x) { return x.id !== deleteTargetId; });
+      saveBooks();
+      closeDelete();
+      renderBooks();
+      toast(b ? "تم حذف «" + b.title + "»" : "تم حذف الكتاب");
+    }
   });
 
   $("resetBtn").addEventListener("click", function () {
@@ -368,7 +638,14 @@
     el.addEventListener("change", renderBooks);
   });
 
-  // ---------- تشغيل ----------
-  // Use localStorage only (no Supabase integration in this version)
+  // ---------- التشغيل ----------
+  if (window.supabase && window.supabase.createClient) {
+    initSupabase();
+  } else {
+    isSupabaseActive = false;
+  }
   renderBooks();
+
+  window.loginWithSupabase = window.loginWithSupabase || function () {};
+  window.logoutFromSupabase = window.logoutFromSupabase || function () {};
 })();
